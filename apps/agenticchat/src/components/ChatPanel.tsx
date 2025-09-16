@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useChat } from '../contexts/ChatContext';
 import { Bot, Plus } from 'lucide-react';
-import { ChatSection } from '@llamaindex/chat-ui';
 
 export default function ChatPanel() {
   const { state, dispatch, getActiveAgent, sendMessage, createAgentFromPrompt } = useChat();
@@ -13,68 +12,26 @@ export default function ChatPanel() {
   const activeAgent = getActiveAgent();
   const isInitialState = !activeAgent && state.messages.length === 0;
 
-  // Chat handler for LlamaIndex ChatSection
-  const chatHandler = {
-    messages: state.messages.map(msg => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content,
-      createdAt: msg.timestamp,
-      parts: [{ type: 'text', text: msg.content }],
-    })),
-    input: inputValue,
-    handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(e.target.value);
-    },
-    handleSubmit: async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!inputValue.trim() || state.isLoading || isTyping) return;
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || state.isLoading || isTyping) return;
 
-      const message = inputValue.trim();
-      setInputValue('');
-      setIsTyping(true);
+    const message = inputValue.trim();
+    setInputValue('');
+    setIsTyping(true);
 
-      // If there's an active agent, continue conversation with it
-      if (activeAgent) {
-        sendMessage(message);
-      } else {
-        // If no active agent, create new agents from prompt
-        createAgentFromPrompt(message);
-      }
-      
-      // Reset typing indicator after a short delay
-      setTimeout(() => {
-        setIsTyping(false);
-      }, 500);
-    },
-    isLoading: state.isLoading || isTyping,
-    error: null,
-    status: (state.isLoading || isTyping ? 'streaming' : 'ready') as 'streaming' | 'ready' | 'submitted' | 'error',
-    sendMessage: async (msg: unknown) => {
-      const message = typeof msg === 'string' ? msg : 
-        (msg as { content?: string; parts?: { text?: string }[] })?.content || 
-        (msg as { content?: string; parts?: { text?: string }[] })?.parts?.[0]?.text || '';
-      if (activeAgent) {
-        sendMessage(message);
-      } else {
-        createAgentFromPrompt(message);
-      }
-    },
-    reload: () => {
-      // Mock implementation
-    },
-    stop: async () => {
-      // Mock implementation
-    },
-    append: () => {
-      // Mock implementation
-    },
-    setMessages: () => {
-      // Mock implementation
-    },
-    setInput: (value: string) => {
-      setInputValue(value);
-    },
+    // If there's an active agent, continue conversation with it
+    if (activeAgent) {
+      sendMessage(message);
+    } else {
+      // If no active agent, create new agents from prompt
+      createAgentFromPrompt(message);
+    }
+    
+    // Reset typing indicator after a short delay
+    setTimeout(() => {
+      setIsTyping(false);
+    }, 500);
   };
 
 
@@ -125,32 +82,96 @@ export default function ChatPanel() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {!activeAgent ? (
-          <div className="h-full flex flex-col">
-            {/* Welcome message */}
-            <div className="flex-1 flex items-center justify-center p-4">
-              <div className="text-center max-w-md">
-                <Bot className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to AI Agent System</h3>
-                <p className="text-gray-500 mb-4">
-                  Describe what you want to accomplish and I&apos;ll automatically create the right AI agents with the necessary tools and permissions to help you.
-                </p>
-                <div className="text-sm text-gray-400">
-                  <p>Example: &quot;I need to analyze sales data and create a report&quot;</p>
-                </div>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center max-w-md">
+              <Bot className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to AI Agent System</h3>
+              <p className="text-gray-500 mb-4">
+                Describe what you want to accomplish and I&apos;ll automatically create the right AI agents with the necessary tools and permissions to help you.
+              </p>
+              <div className="text-sm text-gray-400">
+                <p>Example: &quot;I need to analyze sales data and create a report&quot;</p>
               </div>
             </div>
-            {/* Chat input for new chat */}
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <ChatSection handler={chatHandler} />
+          </div>
+        ) : state.messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="text-4xl mb-4">{activeAgent.avatar}</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation with {activeAgent.name}</h3>
+              <p className="text-gray-500">Ask me anything about {activeAgent.capabilities.join(', ').toLowerCase()}</p>
             </div>
           </div>
         ) : (
-          <div className="h-full">
-            <ChatSection handler={chatHandler} />
+          state.messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className={`text-xs mt-1 ${
+                  message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                }`}>
+                  {message.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+
+        {/* Typing indicator */}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg flex items-center space-x-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
           </div>
         )}
+
+        {/* Loading indicator */}
+        {state.isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg flex items-center space-x-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <form onSubmit={handleSendMessage} className="flex space-x-2">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={!activeAgent ? "Describe your task..." : `Message ${activeAgent?.name}...`}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={state.isLoading || isTyping}
+          />
+          <button
+            type="submit"
+            disabled={!inputValue.trim() || state.isLoading || isTyping}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </form>
       </div>
     </div>
   );
