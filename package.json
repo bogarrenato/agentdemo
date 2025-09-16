@@ -5,6 +5,9 @@
   "scripts": {},
   "private": true,
   "dependencies": {
+    "@llamaindex/chat-ui": "^0.6.1",
+    "@radix-ui/react-icons": "^1.3.2",
+    "lucide-react": "^0.544.0",
     "next": "~15.2.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"
